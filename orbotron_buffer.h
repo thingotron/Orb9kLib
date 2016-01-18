@@ -13,19 +13,26 @@ enum OrbType
   SpaceBall5000
 };
 
-inline unsigned short mshl( unsigned short b, unsigned short mask, unsigned short shift )
+inline short mshl( unsigned short b, unsigned short mask, unsigned short shift )
 {
   return (b & mask) << shift;
 }
 
-inline unsigned short mshr( unsigned short b, unsigned short mask, unsigned short shift )
+inline short mshr( unsigned short b, unsigned short mask, unsigned short shift )
 {
   return (b & mask) >> shift;
 }
 
-inline short reshift( unsigned short b, int shiftlen )
+inline short resign( unsigned short b )
 {
-  return ((((short) b) << shiftlen) >> shiftlen);
+  const short schar = (0x0200); //512; finding the sign bit of a 10-bit signed number
+  const short smask = (0xfe00);
+  if (b & schar) {
+    return (b | smask);
+    //    return ((short)b - 1023); //this is probably not the correct conversion but it'll be only off by 1
+  } else {
+    return b;
+  }
 }
 
 inline short spaceball_ballaxis( unsigned short b1, unsigned short b2 )
@@ -221,7 +228,7 @@ public:
     //and we need to move it to bit 16
     for ( int i = 0; i < 6; ++i )
     {
-      physical_axes[i] = reshift( physical_axes[i], 6 );
+      physical_axes[i] = resign( physical_axes[i] );
     }
 
   }

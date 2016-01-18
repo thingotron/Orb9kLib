@@ -81,7 +81,7 @@
 
 #define KEY_HOME    74
 #define KEY_PAGEUP  75
-#define KEY_DELETE  76
+#define KEY_DELETE_FORWARD  76
 #define KEY_END     77
 #define KEY_PAGEDOWN 78
 #define KEY_ARROW_RIGHT 79
