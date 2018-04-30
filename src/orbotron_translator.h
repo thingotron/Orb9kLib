@@ -4,6 +4,11 @@
 #define NUM_LOGICAL_AXES 6
 #define NUM_LOGICAL_BUTTONS 16
 
+#include "chart_0.h"
+#include "chart_2.h"
+#include "chart_4.h"
+#include "chart_5.h"
+
 #include <arduino.h>
 #define NUM_POSSIBLE_AXIS_KEYBINDINGS 6
 #include <string.h>
@@ -77,7 +82,7 @@ unsigned short sensitivity_chart( short value, const unsigned short * ptable )
     }
   else if ( ( value >= 0 ) && ( value <= 1023 ) )
   {
-    return pgm_read_word(ptable+value);
+    return *(ptable+value);
   }
   else
   {
@@ -147,6 +152,10 @@ axis_with_gain( short base, int polarity, short gain, const unsigned short * pta
   return result;
 }
 
+bool matches_mask(unsigned short val, unsigned short mask) {
+  return ( (val & mask) == mask );
+}
+
 //mouse interval in milliseconds
 #define DEFAULT_MOUSE_INTERVAL 10
 
@@ -174,6 +183,7 @@ public:
   unsigned short last_mouse_orb_values[2];
   unsigned short translated_axes[ NUM_LOGICAL_AXES ];
   bool send_joystick_reports;
+  bool enable_configurator;
   const unsigned char *axis_map;
   // polarity is by LOGICAL axis
   const short *polarity;
@@ -181,6 +191,7 @@ public:
 
   Orbotron_translator( void ) :
   chording( false ),
+    enable_configurator( true ),
     button_key_bindings( NULL ),
     num_button_key_bindings( 0 ),
     axis_key_bindings( NULL ),
@@ -191,7 +202,7 @@ public:
     num_button_mouse_bindings( 0 ),
     fourway_bindings( NULL ),
     num_fourway_bindings( 0 ),
-    p_sensitivity_table( NULL  ),
+    p_sensitivity_table( sensitivity_4_chart  ),
     precision_mask(0),
     last_mouse_update_time( 0),
     send_joystick_reports(true),
@@ -211,6 +222,10 @@ public:
 	translated_axes[i]=512;
       }
     precision_mask = 0;
+  }
+
+  void set_enable_configurator( bool new_enable_configurator ) {
+    enable_configurator = new_enable_configurator;
   }
 
   void set_sensitivity_table( const unsigned short* p_new_sensitivity_table )
@@ -606,6 +621,71 @@ public:
 
     from.log_change();
   }
+
+  void configure( Logical_orbotron& from )
+  {
+    // this only makes sense for spaceorbs, but then the reset button
+    // should only be pressed for them
+    if (from.spaceorb_reset_button)
+      {
+	// both edge buttons == gain
+	if (matches_mask(from.physical_buttons, (0x01 | 0x02)))
+	  {
+	    if (matches_mask(from.physical_buttons, (0x01 | 0x02 | 0x04)))
+	      {
+		set_gain(0);
+	      }
+	    if (matches_mask(from.physical_buttons, (0x01 | 0x02 | 0x08)))
+	      {
+		set_gain(30);
+	      }
+	    if (matches_mask(from.physical_buttons, (0x01 | 0x02 | 0x10)))
+	      {
+		set_gain(60);
+	      }
+	    if (matches_mask(from.physical_buttons, (0x01 | 0x02 | 0x20)))
+	      {
+		set_gain(90);
+	      }
+	  }
+
+	// edge button A == chording
+	else if (matches_mask(from.physical_buttons, 0x01))
+	  {
+	    if (matches_mask(from.physical_buttons, (0x01 | 0x04)))
+	      {
+		set_chording(true);
+	      }
+	    if (matches_mask(from.physical_buttons, (0x01 | 0x08)))
+	      {
+		set_chording(false);
+	      }
+	  }
+
+	// edge button B == sensitivity
+	else if (matches_mask(from.physical_buttons, 0x02))
+	  {
+	    if (matches_mask(from.physical_buttons, (0x02 | 0x04)))
+	      {
+		set_sensitivity_table(sensitivity_0_chart);
+	      }
+	    if (matches_mask(from.physical_buttons, (0x02 | 0x08)))
+	      {
+		set_sensitivity_table(sensitivity_2_chart);
+	      }
+	    if (matches_mask(from.physical_buttons, (0x02 | 0x10)))
+	      {
+		set_sensitivity_table(sensitivity_4_chart);
+	      }
+	    if (matches_mask(from.physical_buttons, (0x02 | 0x20)))
+	      {
+		set_sensitivity_table(sensitivity_5_chart);
+	      }
+	  }
+      }
+  }
+
+  
 };
 
 extern "C" long unsigned int millis( void );
@@ -618,11 +698,11 @@ orbotron_checkinit( Logical_orbotron& from, Orbotron_translator& translator, Orb
       if (from.orb_type == SpaceBall4000)
 	{
 	  //to.safe_send_serial_P(spaceball_setup_string);
-	  Serial1.print("\rCB\rNT\rFT?\rFR?\rP@r@r\rMSSV\rZ\rBcCcCcC\r");
+	  Serial.print("\rCB\rNT\rFT?\rFR?\rP@r@r\rMSSV\rZ\rBcCcCcC\r");
 	}
       else if ( from.orb_type == SpaceBall5000 )
 	{
-	  Serial1.print("\rm3\rpBB\rz\r");
+	  Serial.print("\rm3\rpBB\rz\r");
 	  //not sure why this isn't working any more, incidentally
 	  //to.safe_send_serial_P(magellan_setup_string);
 	}
@@ -631,13 +711,17 @@ orbotron_checkinit( Logical_orbotron& from, Orbotron_translator& translator, Orb
   
 }
 
+
 inline void
 orbotron_translate( Logical_orbotron& from, Orbotron_translator& translator, Orbotron_device& to )
 {
-  int n=Serial1.available();
+  if (translator.enable_configurator) {
+    translator.configure(from);
+  }
+  int n=Serial.available();
   while ( n > 0 )
     {
-      byte b = Serial1.read();
+      byte b = Serial.read();
       from.add_byte(b);
       --n;
     }

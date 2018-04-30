@@ -12,7 +12,7 @@ Orbotron_device orb_device;
 
 void setup()
 {
-  Serial1.begin(9600);
+  Serial.begin(9600);
   translator.default_setup(orb_buffer.orb_type);
   //translator.set_sensitivity_table( sensitivity_3_chart );
 }

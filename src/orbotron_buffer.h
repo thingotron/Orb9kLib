@@ -67,6 +67,7 @@ public:
   unsigned char buffer[BUFFER_SIZE];
   unsigned short cursor;
   short physical_axes[6];
+  bool spaceorb_reset_button;
   unsigned short physical_buttons;
   short expected_packet_length;
   bool awaiting_escape;
@@ -78,6 +79,7 @@ public:
     orb_type = new_orb_type;
     memset( physical_axes, 0, sizeof( physical_axes ) );
     physical_buttons = 0;
+    spaceorb_reset_button = false;
     awaiting_escape = false;
     expected_packet_length = PACKET_UNKNOWN;
   }
@@ -175,7 +177,8 @@ public:
   void process_spaceorb_buttondata( void )
   {
     // buffer[2] now has data in the form 1<rezero><F><E><D><C><B><A>
-    physical_buttons = buffer[2] & 63;  
+    physical_buttons = buffer[2] & 63;
+    spaceorb_reset_button = (buffer[2] & 64) != 0;
     // add magellan
   }
 

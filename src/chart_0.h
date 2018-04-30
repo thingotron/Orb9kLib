@@ -1,6 +1,6 @@
 #include <avr/pgmspace.h>
 
-const PROGMEM unsigned short sensitivity_0_chart[] =
+const unsigned short sensitivity_0_chart[] =
   {
     0,
     1,
